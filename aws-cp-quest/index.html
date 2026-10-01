@@ -1,0 +1,366 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CLF-C02 クエスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 760px の1カラム。ホーム = IDカード → 今日 → モード → ドメイン → バッジ。プレイ画面 = 固定の進行バー + 問題カード。背景は構成図用の方眼。 */
+:root {
+  --bg: #EAF0F3;
+  --dot: #C6D3DB;
+  --surface: #FFFFFF;
+  --surface-2: #DEE7EC;
+  --ink: #122029;
+  --muted: #55687A;
+  --line: #CAD6DE;
+  --xp: #E8A400;
+  --xp-soft: #FFF0C2;
+  --on-xp: #231A00;
+  --card: #122029;
+  --card-ink: #EAF0F3;
+  --good: #1D7F46;
+  --good-soft: #DCF2E4;
+  --bad: #BD3A2C;
+  --bad-soft: #FBE2DE;
+  --d1: #3866B0;
+  --d2: #8A4FBF;
+  --d3: #0F8577;
+  --d4: #C2710A;
+  --font-display: 'Dela Gothic One', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D151B; --dot: #1C2A34; --surface: #15202A; --surface-2: #1E2C37; --ink: #E3ECF1; --muted: #93A5B3; --line: #2A3B48;
+    --xp: #FFC733; --xp-soft: #3A2F10; --on-xp: #231A00; --card: #1F3442; --card-ink: #E3ECF1; --good: #4CC584; --good-soft: #12301F; --bad: #F2695C; --bad-soft: #3A1916;
+    --d1: #6E9DEB; --d2: #B88AEB; --d3: #3CC2AE; --d4: #F0A541;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D151B; --dot: #1C2A34; --surface: #15202A; --surface-2: #1E2C37; --ink: #E3ECF1; --muted: #93A5B3; --line: #2A3B48;
+  --xp: #FFC733; --xp-soft: #3A2F10; --on-xp: #231A00; --card: #1F3442; --card-ink: #E3ECF1; --good: #4CC584; --good-soft: #12301F; --bad: #F2695C; --bad-soft: #3A1916;
+  --d1: #6E9DEB; --d2: #B88AEB; --d3: #3CC2AE; --d4: #F0A541;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--dot) 1px, transparent 1.3px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 400; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--xp); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+
+.app { max-width: 760px; margin-inline: auto; padding-inline: 16px; padding-block: 8px 72px; }
+
+/* ── ヘッダー ── */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px 14px; }
+.brand { display: flex; align-items: center; gap: 8px; background: none; border: none; padding: 0; cursor: pointer; }
+.brand-code { font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: .06em; padding: 1px 7px; border: 1.5px solid var(--ink); border-radius: 6px; }
+.brand-name { font-family: var(--font-display); font-size: 21px; letter-spacing: .02em; }
+.top-stats { display: flex; gap: 6px; font-size: 12.5px; flex-wrap: wrap; justify-content: flex-end; }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+.pill.lv { background: var(--xp-soft); border-color: transparent; font-weight: 700; }
+
+/* ── 共通部品 ── */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.panel-head h2 { font-family: var(--font-display); font-size: 18px; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 18px; border-radius: 12px; border: 1.5px solid var(--ink); background: transparent; cursor: pointer; font-weight: 700; line-height: 1.3; transition: transform .12s, opacity .12s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.sm { padding: 6px 12px; font-size: 13px; border-radius: 9px; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.link { background: none; border: none; padding: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-size: 13px; }
+.screen { display: grid; gap: 16px; }
+
+/* ── IDカード ── */
+.idcard { background: var(--card); color: var(--card-ink); border-radius: 18px; padding: 18px 20px; display: grid; gap: 12px; overflow: hidden; position: relative; }
+.idcard .eyebrow { color: inherit; opacity: .7; }
+.idcard::after { content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%; border: 22px solid var(--xp); opacity: .13; pointer-events: none; }
+.id-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; }
+.id-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.id-lv { display: grid; justify-items: center; line-height: 1; min-width: 64px; }
+.id-lv-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; opacity: .7; }
+.id-lv-num { font-family: var(--font-display); font-size: 52px; color: var(--xp); }
+.id-who { min-width: 0; }
+.id-title { font-family: var(--font-display); font-size: 22px; line-height: 1.3; }
+.id-arn { font-size: 12px; opacity: .6; margin-top: 4px; overflow-wrap: anywhere; }
+.xpbar { height: 10px; border-radius: 99px; background: color-mix(in srgb, var(--card-ink) 16%, transparent); overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: var(--xp); border-radius: inherit; transition: width .6s ease; }
+.id-foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; opacity: .8; }
+
+/* ── 今日 ── */
+.today { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.ring { width: 78px; height: 78px; position: relative; }
+.ring svg { transform: rotate(-90deg); display: block; }
+.ring-bg { stroke: var(--surface-2); }
+.ring-fg { stroke: var(--xp); transition: stroke-dasharray .6s ease; }
+.ring-text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.15; }
+.ring-text b { font-family: var(--font-mono); font-size: 18px; }
+.ring-text span { font-size: 10.5px; color: var(--muted); }
+.today-info { display: grid; gap: 10px; min-width: 0; }
+.today-line { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.today-line b { color: var(--ink); }
+
+/* ── モード ── */
+.modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 680px) { .modes { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mode { display: grid; grid-template-rows: auto auto 1fr auto; gap: 4px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; cursor: pointer; transition: transform .15s, border-color .15s; min-width: 0; }
+.mode:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--ink); }
+.mode:disabled { opacity: .5; cursor: default; }
+.mode svg { width: 26px; height: 26px; margin-bottom: 4px; }
+.mode-name { font-family: var(--font-display); font-size: 15.5px; }
+.mode-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.mode-stat { font-size: 11.5px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+
+/* ── 準備度とドメイン ── */
+.ready-num { font-family: var(--font-display); font-size: 30px; line-height: 1; }
+.ready-num small { font-family: var(--font-mono); font-size: 14px; margin-left: 2px; }
+.stack { position: relative; height: 16px; border-radius: 6px; background: var(--surface-2); display: flex; margin-block: 30px 6px; }
+.stack i { display: block; height: 100%; background: var(--dc); transition: width .6s ease; }
+.stack i:first-child { border-radius: 6px 0 0 6px; }
+.stack .mark { position: absolute; top: -6px; bottom: -6px; left: 70%; width: 2px; background: var(--ink); }
+.stack .mark span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; font-family: var(--font-mono); font-size: 10.5px; white-space: nowrap; }
+.drows { display: grid; margin-top: 10px; }
+.drow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding-block: 12px; border-top: 1px solid var(--line); }
+.dcode { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--dc); border: 1.5px solid var(--dc); border-radius: 6px; padding: 2px 0; width: 52px; text-align: center; line-height: 1.4; }
+.dcode small { display: block; font-size: 10px; font-weight: 500; opacity: .85; }
+.dinfo { min-width: 0; }
+.dname { font-weight: 700; line-height: 1.4; }
+.dsub { font-size: 12px; color: var(--muted); }
+.dbar { height: 4px; background: var(--surface-2); border-radius: 9px; margin-top: 6px; overflow: hidden; }
+.dbar i { display: block; height: 100%; background: var(--dc); }
+
+/* ── バッジ ── */
+.badges { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.badge { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 10px; align-items: center; padding: 6px; opacity: .45; }
+.badge.on { opacity: 1; }
+.hex { grid-row: span 2; width: 38px; height: 42px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--surface-2); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted); }
+.badge.on .hex { background: var(--xp); color: var(--on-xp); }
+.badge-name { font-weight: 700; font-size: 13px; line-height: 1.35; }
+.badge-desc { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+/* ── 試験メモ ── */
+.exam summary { cursor: pointer; font-family: var(--font-display); font-size: 16px; }
+.exam dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; margin: 14px 0 10px; font-size: 14px; }
+.exam dt { color: var(--muted); font-size: 13px; }
+.exam dd { margin: 0; }
+.home-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.confirm { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ── 出題画面 ── */
+.qbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; align-items: center; gap: 12px; padding-block: 10px; background: var(--bg); }
+.ghost { background: none; border: none; padding: 6px 2px; cursor: pointer; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.ghost.armed { color: var(--bad); font-weight: 700; }
+.qprog { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.qprog-top { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.track { height: 6px; background: var(--surface-2); border-radius: 9px; overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--ink); transition: width .3s; }
+.combo { background: var(--xp); color: var(--on-xp); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 99px; white-space: nowrap; animation: pop .3s ease; }
+.timer { font-family: var(--font-mono); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.timer.low { color: var(--bad); }
+.qcard { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 16px; }
+.qmeta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dtag { font-size: 12px; font-weight: 700; color: var(--dc); background: color-mix(in srgb, var(--dc) 13%, transparent); padding: 2px 10px; border-radius: 99px; }
+.multi { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--xp-soft); }
+.qtext { font-size: 17.5px; line-height: 1.7; font-weight: 700; }
+.opts { display: grid; gap: 10px; }
+.opt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; text-align: left; width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; line-height: 1.55; transition: border-color .12s, background-color .12s; }
+.opt:hover:not(:disabled) { border-color: var(--ink); }
+.opt .key { font-family: var(--font-mono); font-weight: 700; font-size: 12px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px; background: var(--surface-2); }
+.opt[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-2); }
+.opt[aria-pressed="true"] .key { background: var(--ink); color: var(--surface); }
+.opt:disabled { cursor: default; color: var(--ink); }
+.opt.is-correct { border-color: var(--good); background: var(--good-soft); }
+.opt.is-correct .key { background: var(--good); color: var(--surface); }
+.opt.is-wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.is-wrong .key { background: var(--bad); color: var(--surface); }
+.feedback { border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; }
+.feedback.ok { background: var(--good-soft); }
+.feedback.ng { background: var(--bad-soft); }
+.fb-head { font-weight: 700; }
+.feedback.ok .fb-head { color: var(--good); }
+.feedback.ng .fb-head { color: var(--bad); }
+.fb-exp { font-size: 14px; }
+.qactions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.kbd-hint { font-size: 11.5px; color: var(--muted); }
+@media (hover: none) { .kbd-hint { visibility: hidden; } }
+
+/* ── 結果 ── */
+.score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.score-num { font-family: var(--font-display); font-size: 64px; line-height: 1; }
+.score-of { color: var(--muted); }
+.verdict { justify-self: start; font-weight: 700; padding: 3px 12px; border-radius: 99px; }
+.verdict.pass { background: var(--good-soft); color: var(--good); }
+.verdict.fail { background: var(--bad-soft); color: var(--bad); }
+.result-sub { font-size: 13px; color: var(--muted); }
+.breakdown { display: grid; gap: 8px; }
+.bd-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; font-size: 13.5px; }
+.bd-row .dbar { grid-column: 2 / 4; margin-top: 0; }
+.review h3 { font-family: var(--font-display); font-size: 16px; margin-bottom: 4px; }
+.review details { border-top: 1px solid var(--line); padding-block: 10px; }
+.review summary { cursor: pointer; font-weight: 700; line-height: 1.55; }
+.review details p { font-size: 14px; margin-top: 6px; }
+.rv-ans { color: var(--good); font-weight: 700; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ── 早押し ── */
+.sp-time { font-family: var(--font-display); font-size: 26px; font-variant-numeric: tabular-nums; min-width: 3.4ch; text-align: right; line-height: 1; }
+.sp-time.low { color: var(--bad); }
+.sp-score { font-family: var(--font-mono); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.sp-desc { font-size: 20px; line-height: 1.6; font-weight: 700; min-height: 3.2em; }
+.opts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.opts.two .opt { min-height: 64px; align-items: center; }
+.opts.two .opt .otext { font-weight: 700; overflow-wrap: anywhere; }
+.penalty { color: var(--bad); font-family: var(--font-mono); font-weight: 700; font-size: 13px; animation: rise 1s ease forwards; }
+.sp-title { font-family: var(--font-display); font-size: 24px; }
+.rules { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 14px; }
+.miss-list { display: grid; gap: 6px; font-size: 13.5px; margin-top: 8px; }
+.miss-list b { margin-right: 6px; }
+
+/* ── 単語カード ── */
+.flash { perspective: 1200px; width: 100%; border: none; background: none; padding: 0; cursor: pointer; display: block; text-align: center; }
+.flash-inner { display: grid; transition: transform .5s ease; transform-style: preserve-3d; }
+.flash.flipped .flash-inner { transform: rotateY(180deg); }
+.face { grid-area: 1 / 1; min-height: 240px; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; display: grid; place-content: center; gap: 10px; }
+.face.back { transform: rotateY(180deg); background: var(--card); color: var(--card-ink); border-color: var(--card); }
+.face.back .eyebrow { color: inherit; opacity: .7; }
+.face-main { font-family: var(--font-display); font-size: 26px; line-height: 1.4; overflow-wrap: anywhere; }
+.face-main.desc { font-family: var(--font-body); font-weight: 700; font-size: 20px; }
+.face-hint { font-size: 12px; color: var(--muted); }
+.card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.known-mark { font-size: 12px; font-weight: 700; color: var(--good); }
+
+/* ── トーストと紙吹雪 ── */
+#toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; z-index: 20; width: min(calc(100vw - 32px), 420px); pointer-events: none; }
+.toast { background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; text-align: center; animation: rise-in .25s ease; transition: opacity .4s, transform .4s; }
+.toast.out { opacity: 0; transform: translateY(8px); }
+.toast.gold { background: var(--xp); color: var(--on-xp); }
+#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+
+@keyframes pop { from { transform: scale(.7); } to { transform: scale(1); } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-14px); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <button type="button" class="brand" data-action="home" aria-label="ホームへ">
+      <span class="brand-code">CLF-C02</span><span class="brand-name">クエスト</span>
+    </button>
+    <div class="top-stats" id="top-stats"></div>
+  </header>
+
+  <main>
+    <section id="home" class="screen" aria-label="ホーム"></section>
+
+    <section id="quiz" class="screen" aria-label="出題" hidden>
+      <div class="qbar">
+        <button type="button" class="ghost" data-action="quit" id="q-quit">やめる</button>
+        <div class="qprog">
+          <div class="qprog-top"><span id="q-mode"></span><span class="mono" id="q-count"></span></div>
+          <div class="track"><i id="q-progress"></i></div>
+        </div>
+        <span class="timer" id="q-timer" hidden></span>
+        <span class="combo" id="q-combo" hidden></span>
+      </div>
+      <article class="qcard">
+        <div class="qmeta" id="q-meta"></div>
+        <h2 class="qtext" id="q-text"></h2>
+        <div class="opts" id="q-opts"></div>
+        <div class="feedback" id="q-feedback" hidden></div>
+        <div class="qactions">
+          <span class="kbd-hint">キー 1〜4 で選択 / Enter で回答</span>
+          <button type="button" class="btn primary" data-action="submit" id="q-submit">回答する</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="result" class="screen" aria-label="結果" hidden>
+      <div class="panel screen" id="result-body"></div>
+    </section>
+
+    <section id="speed" class="screen" aria-label="サービス早押し" hidden>
+      <div id="sp-intro" class="panel screen">
+        <p class="eyebrow">Speed round</p>
+        <h2 class="sp-title">サービス早押し</h2>
+        <ul class="rules">
+          <li>説明文を読んで、当てはまるAWSサービスを4択から選びます。</li>
+          <li>制限時間は60秒。まちがえると残り時間が3秒減ります。</li>
+          <li>連続正解でもらえるXPが増えます。</li>
+        </ul>
+        <p class="note">自己ベスト <b class="mono" id="sp-best">0</b> 問</p>
+        <div class="actions">
+          <button type="button" class="btn primary" data-action="sp-start">スタート</button>
+          <button type="button" class="btn" data-action="home">ホームへ</button>
+        </div>
+      </div>
+      <div id="sp-stage" class="screen" hidden>
+        <div class="qbar">
+          <button type="button" class="ghost" data-action="home">やめる</button>
+          <div class="qprog">
+            <div class="qprog-top"><span id="sp-combo"></span><span class="sp-score" id="sp-score">0 問</span></div>
+            <div class="track"><i id="sp-bar"></i></div>
+          </div>
+          <span class="sp-time" id="sp-time">60</span>
+        </div>
+        <article class="qcard">
+          <div class="qmeta"><span class="eyebrow">このサービスは？</span><span class="dtag" style="--dc: var(--muted)" id="sp-cat"></span><span id="sp-penalty"></span></div>
+          <h2 class="sp-desc" id="sp-desc"></h2>
+          <div class="opts two" id="sp-opts"></div>
+        </article>
+      </div>
+      <div id="sp-end" class="panel screen" hidden></div>
+    </section>
+
+    <section id="cards" class="screen" aria-label="サービス単語帳" hidden>
+      <div class="qbar">
+        <button type="button" class="ghost" data-action="home">もどる</button>
+        <div class="qprog">
+          <div class="qprog-top"><span>サービス単語帳</span><span class="mono" id="fc-count"></span></div>
+          <div class="track"><i id="fc-bar"></i></div>
+        </div>
+        <button type="button" class="btn sm" data-action="fc-reverse" id="fc-reverse">逆向き</button>
+      </div>
+      <button type="button" class="flash" data-action="flip" id="fc-flash" aria-label="カードをめくる">
+        <div class="flash-inner">
+          <div class="face front" id="fc-front"></div>
+          <div class="face back" id="fc-back"></div>
+        </div>
+      </button>
+      <div class="card-actions">
+        <button type="button" class="btn" data-action="fc-unknown">まだ</button>
+        <button type="button" class="btn primary" data-action="fc-known">覚えた</button>
+      </div>
+      <p class="kbd-hint" style="text-align: center;">Space でめくる / ← まだ / → 覚えた</p>
+    </section>
+  </main>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+<canvas id="fx" hidden></canvas>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
