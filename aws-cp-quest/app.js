@@ -5,12 +5,16 @@
   const DOMAINS = DATA.domains;
   const QUESTIONS = DATA.questions;
   const CARDS = DATA.cards;
+  const TERMS = DATA.terms;
 
   const STORE_KEY = 'clf-c02-quest-v1';
   const DAILY_GOAL = 20;
   const QUEST_SIZE = 10;
-  // 本番 65問/90分 の配分(24/30/34/12%)を20問に縮めたミニ模試
-  const MOCK = { counts: { 1: 5, 2: 6, 3: 7, 4: 2 }, minutes: 28 };
+  // 模試の出題数はドメインの配点(24/30/34/12%)どおり。本番は65問/90分、ミニはそれを20問に縮めたもの
+  const MOCKS = {
+    mini: { label: 'ミニ模試', counts: { 1: 5, 2: 6, 3: 7, 4: 2 }, minutes: 28, bonus: 30 },
+    full: { label: '本番模試', counts: { 1: 16, 2: 19, 3: 22, 4: 8 }, minutes: 90, bonus: 80 },
+  };
   const SPEED_SECONDS = 60;
   const KEYS = 'ABCD';
 
@@ -37,10 +41,11 @@
     answered: 0,
     q: {},        // 問題ID → { n: 回答数, c: 正解数, last: 直近の正誤(1/0), w: 不正解数 }
     cards: {},    // サービス名 → 1 (覚えた)
+    terms: {},    // 用語 → 1 (覚えた)
     streak: { last: null, days: 0 },
     today: { date: null, n: 0 },
     badges: {},
-    best: { speed: 0, mock: 0, combo: 0 },
+    best: { speed: 0, mock: 0, full: 0, combo: 0 },
   });
 
   function load() {
@@ -49,6 +54,7 @@
       if (raw) {
         const s = Object.assign(blank(), JSON.parse(raw));
         s.best = Object.assign(blank().best, s.best);
+        s.terms = s.terms || {};
         return s;
       }
     } catch (e) { /* 保存領域が使えない環境ではメモリ上だけで動かす */ }
@@ -127,12 +133,19 @@
   const weakList = () => QUESTIONS
     .filter((q) => S.q[q.id] && !S.q[q.id].last)
     .sort((a, b) => S.q[b.id].w - S.q[a.id].w);
-  const knownCards = () => CARDS.filter((c) => S.cards[c.n]).length;
+  // 単語帳のデッキ。覚えたかどうかはデッキごとに別の保存先に記録する
+  const DECKS = {
+    cards: { title: 'サービス単語帳', list: CARDS, store: () => S.cards, nameLabel: 'サービス', descLabel: 'どんなサービス？' },
+    terms: { title: '用語カード', list: TERMS, store: () => S.terms, nameLabel: '用語', descLabel: 'どういう意味？' },
+  };
+  const knownIn = (key) => { const st = DECKS[key].store(); return DECKS[key].list.filter((c) => st[c.n]).length; };
+  const knownCards = () => knownIn('cards');
 
   // ───────── バッジ ─────────
   const BADGES = [
     { id: 'first', mark: '1st', name: 'はじめの一歩', desc: 'はじめて問題に回答', test: () => S.answered >= 1 },
     { id: 'q100', mark: '100', name: '100問ノック', desc: '累計100問に回答', test: () => S.answered >= 100 },
+    { id: 'q500', mark: '500', name: '500問ノック', desc: '累計500問に回答', test: () => S.answered >= 500 },
     { id: 'combo10', mark: 'x10', name: '10コンボ', desc: '10問連続で正解', test: () => S.best.combo >= 10 },
     { id: 'streak3', mark: '3d', name: '三日坊主卒業', desc: '3日連続で学習', test: () => streakNow() >= 3 },
     { id: 'streak7', mark: '7d', name: '1週間皆勤', desc: '7日連続で学習', test: () => streakNow() >= 7 },
@@ -142,8 +155,12 @@
     })),
     { id: 'mock700', mark: '700', name: '合格ライン突破', desc: 'ミニ模試で700点以上', test: () => S.best.mock >= 700 },
     { id: 'mock900', mark: '900', name: '余裕の合格圏', desc: 'ミニ模試で900点以上', test: () => S.best.mock >= 900 },
+    { id: 'full700', mark: '65', name: '本番リハーサル', desc: '本番模試で700点以上', test: () => S.best.full >= 700 },
+    { id: 'full850', mark: '850', name: '本番も怖くない', desc: '本番模試で850点以上', test: () => S.best.full >= 850 },
     { id: 'speed15', mark: '15', name: '早押し名人', desc: '早押しで15問以上正解', test: () => S.best.speed >= 15 },
-    { id: 'cards30', mark: '30', name: 'カードコレクター', desc: '単語帳で30枚を覚えた', test: () => knownCards() >= 30 },
+    { id: 'cards30', mark: '30', name: 'カードコレクター', desc: 'サービス単語帳で30枚を覚えた', test: () => knownCards() >= 30 },
+    { id: 'cardsAll', mark: 'ALL', name: 'サービス図鑑', desc: 'サービス単語帳をすべて覚えた', test: () => knownCards() === CARDS.length },
+    { id: 'terms30', mark: 'T30', name: '用語マスター', desc: '用語カードで30枚を覚えた', test: () => knownIn('terms') >= 30 },
   ];
 
   function checkBadges() {
@@ -180,6 +197,8 @@
     mock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5"/></svg>',
     speed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>',
     cards: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="13" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg>',
+    full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+    terms: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 8h6"/></svg>',
     review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>',
   };
 
@@ -230,15 +249,25 @@
           <span class="mode-desc">20問・28分。本番の配点どおりに出題</span>
           <span class="mode-stat mono">ベスト ${S.best.mock || '—'}</span>
         </button>
+        <button type="button" class="mode" data-action="full">
+          ${ICONS.full}<span class="mode-name">本番模試</span>
+          <span class="mode-desc">65問・90分。本番と同じボリュームで通し練習</span>
+          <span class="mode-stat mono">ベスト ${S.best.full || '—'}</span>
+        </button>
         <button type="button" class="mode" data-action="speed">
           ${ICONS.speed}<span class="mode-name">サービス早押し</span>
           <span class="mode-desc">60秒で何問当てられる？</span>
           <span class="mode-stat mono">ベスト ${S.best.speed} 問</span>
         </button>
-        <button type="button" class="mode" data-action="cards">
+        <button type="button" class="mode" data-action="cards" data-deck="cards">
           ${ICONS.cards}<span class="mode-name">サービス単語帳</span>
           <span class="mode-desc">めくって覚える${CARDS.length}サービス</span>
           <span class="mode-stat mono">覚えた ${knownCards()} / ${CARDS.length}</span>
+        </button>
+        <button type="button" class="mode" data-action="cards" data-deck="terms">
+          ${ICONS.terms}<span class="mode-name">用語カード</span>
+          <span class="mode-desc">RTOやSCPなど試験に出る用語${TERMS.length}個</span>
+          <span class="mode-stat mono">覚えた ${knownIn('terms')} / ${TERMS.length}</span>
         </button>
         <button type="button" class="mode" data-action="review" ${weak ? '' : 'disabled'}>
           ${ICONS.review}<span class="mode-name">苦手復習</span>
@@ -292,6 +321,7 @@
           <dt>出題形式</dt><dd>択一選択・複数選択</dd>
           <dt>配点</dt><dd>${DOMAINS.map((d) => `${d.code} ${esc(d.name)} ${d.weight}%`).join('<br>')}</dd>
         </dl>
+        <p class="note">このアプリの収録数：問題 ${QUESTIONS.length}問(${DOMAINS.map((d) => `${d.code} ${QUESTIONS.filter((q) => q.d === d.id).length}`).join('・')})、サービスカード ${CARDS.length}枚、用語カード ${TERMS.length}枚。</p>
         <p class="note">受験料・試験ガイドの最新版は AWS 認定の公式ページで確認してください。</p>
       </details>
 
@@ -324,8 +354,9 @@
       qs = pickQuest(pool, QUEST_SIZE);
       label = spec.d ? `${DOMAINS[spec.d - 1].code} ${DOMAINS[spec.d - 1].name}` : 'ミックス10問';
     } else if (spec.mode === 'mock') {
-      qs = shuffle(Object.entries(MOCK.counts).flatMap(([d, n]) => shuffle(QUESTIONS.filter((q) => q.d === +d)).slice(0, n)));
-      label = 'ミニ模試';
+      const m = MOCKS[spec.size];
+      qs = shuffle(Object.entries(m.counts).flatMap(([d, n]) => shuffle(QUESTIONS.filter((q) => q.d === +d)).slice(0, n)));
+      label = m.label;
     } else {
       qs = weakList().slice(0, QUEST_SIZE);
       label = '苦手復習';
@@ -340,7 +371,7 @@
     const timer = $('#q-timer');
     timer.hidden = spec.mode !== 'mock';
     if (spec.mode === 'mock') {
-      run.deadline = Date.now() + MOCK.minutes * 60000;
+      run.deadline = Date.now() + MOCKS[spec.size].minutes * 60000;
       run.timer = setInterval(tickMock, 1000);
       tickMock();
     }
@@ -473,8 +504,9 @@
     if (run.spec.mode === 'mock') {
       const score = Math.round((correct / items.length) * 1000);
       run.score = score;
-      S.best.mock = Math.max(S.best.mock, score);
-      const gain = correct * 8 + (run.timeout ? 0 : 30);
+      const bestKey = run.spec.size === 'full' ? 'full' : 'mock';
+      S.best[bestKey] = Math.max(S.best[bestKey], score);
+      const gain = correct * 8 + (run.timeout ? 0 : MOCKS[run.spec.size].bonus);
       run.xp += gain;
       addXP(gain);
       if (score >= 700) confetti();
@@ -656,38 +688,42 @@
   }
 
   // ───────── 単語帳 ─────────
-  let fc = { deck: [], i: 0, reverse: false };
+  let fc = { key: 'cards', deck: [], i: 0, reverse: false };
 
-  function cardsStart() {
+  function cardsStart(key = fc.key) {
     show('cards');
-    const unknown = shuffle(CARDS.filter((c) => !S.cards[c.n]));
-    const known = shuffle(CARDS.filter((c) => S.cards[c.n]));
-    fc = { deck: [...unknown, ...known], i: 0, reverse: fc.reverse };
+    const D = DECKS[key], st = D.store();
+    const unknown = shuffle(D.list.filter((c) => !st[c.n]));
+    const known = shuffle(D.list.filter((c) => st[c.n]));
+    fc = { key, deck: [...unknown, ...known], i: 0, reverse: fc.reverse };
+    $('#fc-title').textContent = D.title;
     renderCard();
   }
 
   function renderCard() {
     const c = fc.deck[fc.i];
-    const known = !!S.cards[c.n];
+    const D = DECKS[fc.key];
+    const known = !!D.store()[c.n];
     const name = `<p class="face-main">${esc(c.n)}</p>`;
     const desc = `<p class="face-main desc">${esc(c.d)}</p>`;
     $('#fc-flash').classList.remove('flipped');
     $('#fc-front').innerHTML =
       `<p class="eyebrow">${esc(c.c)}</p>${fc.reverse ? desc : name}` +
       `<p class="face-hint">${known ? '<span class="known-mark">覚えた</span>・' : ''}タップでめくる</p>`;
-    $('#fc-back').innerHTML = `<p class="eyebrow">${fc.reverse ? 'サービス' : 'どんなサービス？'}</p>${fc.reverse ? name : desc}`;
-    $('#fc-count').textContent = `${fc.i + 1} / ${fc.deck.length}・覚えた ${knownCards()}`;
-    $('#fc-bar').style.width = `${(knownCards() / CARDS.length) * 100}%`;
+    $('#fc-back').innerHTML = `<p class="eyebrow">${fc.reverse ? D.nameLabel : D.descLabel}</p>${fc.reverse ? name : desc}`;
+    $('#fc-count').textContent = `${fc.i + 1} / ${fc.deck.length}・覚えた ${knownIn(fc.key)}`;
+    $('#fc-bar').style.width = `${(knownIn(fc.key) / D.list.length) * 100}%`;
     $('#fc-reverse').textContent = fc.reverse ? '名前→説明' : '説明→名前';
   }
 
   function cardMark(known) {
     const c = fc.deck[fc.i];
+    const st = DECKS[fc.key].store();
     touchDay();
     if (known) {
-      if (!S.cards[c.n]) { S.cards[c.n] = 1; addXP(3); }
+      if (!st[c.n]) { st[c.n] = 1; addXP(3); }
     } else {
-      delete S.cards[c.n];
+      delete st[c.n];
     }
     fc.i = (fc.i + 1) % fc.deck.length;
     if (fc.i === 0) toast('1周しました。覚えていないカードから並べ直します');
@@ -755,7 +791,8 @@
     switch (el.dataset.action) {
       case 'home': show('home'); break;
       case 'quest': begin({ mode: 'quest', d: Number(el.dataset.d) || 0 }); break;
-      case 'mock': begin({ mode: 'mock' }); break;
+      case 'mock': begin({ mode: 'mock', size: 'mini' }); break;
+      case 'full': begin({ mode: 'mock', size: 'full' }); break;
       case 'review': begin({ mode: 'review' }); break;
       case 'again': begin(run.spec); break;
       case 'pick': pick(Number(el.dataset.k)); break;
@@ -764,7 +801,7 @@
       case 'speed': speedIntro(); break;
       case 'sp-start': speedStart(); break;
       case 'sp-pick': speedPick(Number(el.dataset.k)); break;
-      case 'cards': cardsStart(); break;
+      case 'cards': cardsStart(el.dataset.deck); break;
       case 'flip': $('#fc-flash').classList.toggle('flipped'); break;
       case 'fc-known': cardMark(true); break;
       case 'fc-unknown': cardMark(false); break;

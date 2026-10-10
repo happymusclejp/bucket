@@ -123,7 +123,7 @@ button { font: inherit; color: inherit; }
 
 /* ── モード ── */
 .modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-@media (min-width: 680px) { .modes { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 680px) { .modes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .mode { display: grid; grid-template-rows: auto auto 1fr auto; gap: 4px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; cursor: pointer; transition: transform .15s, border-color .15s; min-width: 0; }
 .mode:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--ink); }
 .mode:disabled { opacity: .5; cursor: default; }
@@ -339,7 +339,7 @@ button { font: inherit; color: inherit; }
       <div class="qbar">
         <button type="button" class="ghost" data-action="home">もどる</button>
         <div class="qprog">
-          <div class="qprog-top"><span>サービス単語帳</span><span class="mono" id="fc-count"></span></div>
+          <div class="qprog-top"><span id="fc-title">サービス単語帳</span><span class="mono" id="fc-count"></span></div>
           <div class="track"><i id="fc-bar"></i></div>
         </div>
         <button type="button" class="btn sm" data-action="fc-reverse" id="fc-reverse">逆向き</button>
@@ -362,5 +362,11 @@ button { font: inherit; color: inherit; }
 <div id="toasts" aria-live="polite"></div>
 <canvas id="fx" hidden></canvas>
 
-<script src="data.js"></script>
+<script src="data/core.js"></script>
+<script src="data/q1-concepts.js"></script>
+<script src="data/q2-security.js"></script>
+<script src="data/q3-technology.js"></script>
+<script src="data/q4-billing.js"></script>
+<script src="data/cards.js"></script>
+<script src="data/terms.js"></script>
 <script src="app.js"></script>
