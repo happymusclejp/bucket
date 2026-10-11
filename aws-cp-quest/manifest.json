@@ -1,0 +1,16 @@
+{
+  "name": "CLF-C02 クエスト",
+  "short_name": "CLFクエスト",
+  "description": "AWS Certified Cloud Practitioner (CLF-C02) の勉強を、クイズ・模試・早押し・単語帳で続けるためのアプリ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EAF0F3",
+  "theme_color": "#122029",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -2,6 +2,7 @@
 
 AWS Certified Cloud Practitioner (CLF-C02) の勉強を、ゲーム感覚で続けるためのブラウザアプリです。
 ビルド不要。`index.html` をブラウザで開くだけで動きます。
+HTTPS で公開すると PWA として iPhone のホーム画面に追加でき、オフラインでも動きます。AWS (S3 + CloudFront) での公開手順は [DEPLOY.md](DEPLOY.md) にまとめています。
 
 ## できること
 
@@ -22,6 +23,8 @@ XP・レベル(称号は Free Tier → … → Cloud Practitioner)、連続学�
 
 - `index.html` … 画面とスタイル
 - `app.js` … ロジック(出題、採点、XP、保存など)
+- `manifest.json` / `sw.js` / `icons/` … PWA 用(ホーム画面のアイコン、オフライン対応)
+- `deploy.sh` … S3 + CloudFront への更新用スクリプト
 - `data/` … 出題データ。ファイルに追記すれば問題やカードを増やせます
   - `core.js` … ドメイン定義(最初に読み込む)
   - `q1-concepts.js` / `q2-security.js` / `q3-technology.js` / `q4-billing.js` … ドメインごとの問題(合計345問)

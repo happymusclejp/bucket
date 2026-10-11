@@ -35,6 +35,13 @@
   };
   const pct = (x) => Math.round(x * 100);
 
+  // ───────── 実行環境 ─────────
+  // Artifact の中(iframe)では Service Worker やホーム画面への追加が使えないので、単体で開いたときだけ有効にする
+  const inFrame = (() => { try { return window.top !== window; } catch (e) { return true; } })();
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const showInstallTip = isIOS && !isStandalone && !inFrame;
+
   // ───────── 保存データ ─────────
   const blank = () => ({
     xp: 0,
@@ -324,6 +331,9 @@
         <p class="note">このアプリの収録数：問題 ${QUESTIONS.length}問(${DOMAINS.map((d) => `${d.code} ${QUESTIONS.filter((q) => q.d === d.id).length}`).join('・')})、サービスカード ${CARDS.length}枚、用語カード ${TERMS.length}枚。</p>
         <p class="note">受験料・試験ガイドの最新版は AWS 認定の公式ページで確認してください。</p>
       </details>
+
+      ${showInstallTip ? `
+      <p class="panel install-tip">iPhone では、Safari の<b>共有ボタン →「ホーム画面に追加」</b>でアプリとして使えます。オフラインでも動きます。学習記録はホーム画面のアプリ側に別で保存されるので、最初からアプリで始めるのがおすすめです。</p>` : ''}
 
       <div class="home-foot">
         <span>記録はこのブラウザの中だけに保存されます。</span>
@@ -835,7 +845,20 @@
     }
   });
 
+  // PWA: オフラインで動くように Service Worker を登録する(HTTPS か localhost で単体表示のときだけ)
+  function registerServiceWorker() {
+    try {
+      if (inFrame || !('serviceWorker' in navigator)) return;
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') return;
+      navigator.serviceWorker.register('sw.js').catch(() => { /* 登録できなくても通常どおり動く */ });
+      // 記録がブラウザの容量整理で消されにくくなるよう依頼する(対応ブラウザのみ)
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    } catch (e) { /* 同上 */ }
+  }
+
   // 起動
+  document.documentElement.lang = 'ja';
   if (S.today.date !== ymd()) S.today = { date: ymd(), n: 0 };
   show('home');
+  registerServiceWorker();
 })();
