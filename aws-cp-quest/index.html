@@ -268,10 +268,11 @@ button { font: inherit; color: inherit; }
 .tp-stage-label[data-stage="1"] { background: color-mix(in srgb, var(--d1) 16%, transparent); color: var(--d1); }
 .tp-stage-label[data-stage="2"] { background: color-mix(in srgb, var(--d2) 16%, transparent); color: var(--d2); }
 .tp-stage-label[data-stage="3"] { background: color-mix(in srgb, var(--d3) 16%, transparent); color: var(--d3); }
-.tp-desc { font-size: 19px; line-height: 1.6; font-weight: 700; }
+.tp-desc { font-size: 18px; line-height: 1.6; font-weight: 700; }
 .tp-answer { display: grid; gap: 4px; padding: 16px; border-radius: 14px; background: var(--surface-2); min-width: 0; }
 .tp-prefix { font-family: var(--font-mono); font-size: 12px; color: var(--muted); min-height: 1.2em; }
-.tp-target { font-family: var(--font-mono); font-size: clamp(20px, 6vw, 30px); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; letter-spacing: .02em; }
+.tp-target { font-family: var(--font-mono); font-size: clamp(20px, 6vw, 30px); font-weight: 700; line-height: 1.35; letter-spacing: .02em; }
+.tp-target .tw { white-space: nowrap; }
 .tp-target .tc { white-space: pre; }
 .tp-target .todo { color: var(--muted); opacity: .55; }
 .tp-target .todo.head { color: var(--ink); opacity: 1; }
@@ -289,6 +290,10 @@ button { font: inherit; color: inherit; }
 .tp-feedback.ok b { color: var(--good); }
 .tp-feedback.ng { background: var(--bad-soft); }
 .tp-feedback.ng b { color: var(--bad); }
+.tp-vs { flex-basis: 100%; display: grid; gap: 0 10px; grid-template-columns: minmax(0, 13em) minmax(0, 1fr); font-size: 13.5px; }
+.tp-vs b { color: var(--ink) !important; }
+.tp-memo { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+@media (max-width: 480px) { .tp-vs { grid-template-columns: 1fr; } }
 .tp-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 @keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 
@@ -388,7 +393,7 @@ button { font: inherit; color: inherit; }
           <span class="combo" id="tp-combo" hidden></span>
         </div>
         <article class="qcard">
-          <div class="qmeta"><span class="tp-stage-label" id="tp-stage-label"></span><span class="dtag" style="--dc: var(--muted)" id="tp-cat"></span></div>
+          <div class="qmeta"><span class="tp-stage-label" id="tp-stage-label"></span><span class="dtag" style="--dc: var(--muted)" id="tp-kind"></span></div>
           <h2 class="tp-desc" id="tp-desc"></h2>
           <div class="tp-answer">
             <span class="tp-prefix" id="tp-prefix"></span>
