@@ -262,6 +262,36 @@ button { font: inherit; color: inherit; }
 .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .known-mark { font-size: 12px; font-weight: 700; color: var(--good); }
 
+/* ── 思い出しタイピング ── */
+.mode-wide { grid-column: 1 / -1; }
+.tp-stage-label { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--xp-soft); }
+.tp-stage-label[data-stage="1"] { background: color-mix(in srgb, var(--d1) 16%, transparent); color: var(--d1); }
+.tp-stage-label[data-stage="2"] { background: color-mix(in srgb, var(--d2) 16%, transparent); color: var(--d2); }
+.tp-stage-label[data-stage="3"] { background: color-mix(in srgb, var(--d3) 16%, transparent); color: var(--d3); }
+.tp-desc { font-size: 19px; line-height: 1.6; font-weight: 700; }
+.tp-answer { display: grid; gap: 4px; padding: 16px; border-radius: 14px; background: var(--surface-2); min-width: 0; }
+.tp-prefix { font-family: var(--font-mono); font-size: 12px; color: var(--muted); min-height: 1.2em; }
+.tp-target { font-family: var(--font-mono); font-size: clamp(20px, 6vw, 30px); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; letter-spacing: .02em; }
+.tp-target .tc { white-space: pre; }
+.tp-target .todo { color: var(--muted); opacity: .55; }
+.tp-target .todo.head { color: var(--ink); opacity: 1; }
+.tp-target .cur { color: var(--muted); border-bottom: 3px solid var(--xp); }
+.tp-target .cur.head { color: var(--ink); }
+.tp-target .ok { color: var(--good); }
+.tp-target .ng { color: var(--bad); text-decoration: underline wavy; }
+.tp-target .tp-q { color: var(--muted); }
+.tp-target.shake { animation: shake .25s ease; }
+.tp-target.pop { animation: pop .35s ease; }
+.tp-input { width: 100%; font-family: var(--font-mono); font-size: 18px; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+.tp-input:focus { outline: none; border-color: var(--ink); }
+.tp-feedback { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+.tp-feedback.ok { background: var(--good-soft); }
+.tp-feedback.ok b { color: var(--good); }
+.tp-feedback.ng { background: var(--bad-soft); }
+.tp-feedback.ng b { color: var(--bad); }
+.tp-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+@keyframes shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
 /* ── トーストと紙吹雪 ── */
 #toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; z-index: 20; width: min(calc(100vw - 32px), 420px); pointer-events: none; }
 .toast { background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; text-align: center; animation: rise-in .25s ease; transition: opacity .4s, transform .4s; }
@@ -345,6 +375,35 @@ button { font: inherit; color: inherit; }
         </article>
       </div>
       <div id="sp-end" class="panel screen" hidden></div>
+    </section>
+
+    <section id="typing" class="screen" aria-label="思い出しタイピング" hidden>
+      <div id="tp-stage" class="screen">
+        <div class="qbar">
+          <button type="button" class="ghost" data-action="home">やめる</button>
+          <div class="qprog">
+            <div class="qprog-top"><span>思い出しタイピング</span><span class="mono" id="tp-count"></span></div>
+            <div class="track"><i id="tp-bar"></i></div>
+          </div>
+          <span class="combo" id="tp-combo" hidden></span>
+        </div>
+        <article class="qcard">
+          <div class="qmeta"><span class="tp-stage-label" id="tp-stage-label"></span><span class="dtag" style="--dc: var(--muted)" id="tp-cat"></span></div>
+          <h2 class="tp-desc" id="tp-desc"></h2>
+          <div class="tp-answer">
+            <span class="tp-prefix" id="tp-prefix"></span>
+            <div class="tp-target" id="tp-target" aria-live="polite"></div>
+          </div>
+          <input id="tp-input" class="tp-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="サービス名を入力">
+          <div class="tp-feedback" id="tp-feedback" hidden></div>
+          <div class="tp-actions">
+            <span class="note" id="tp-hint"></span>
+            <button type="button" class="btn sm" data-action="tp-giveup" id="tp-giveup">わからない</button>
+            <button type="button" class="btn primary" data-action="tp-next" id="tp-next" hidden>次へ (Enter)</button>
+          </div>
+        </article>
+      </div>
+      <div id="tp-end" class="panel screen" hidden></div>
     </section>
 
     <section id="cards" class="screen" aria-label="サービス単語帳" hidden>

@@ -82,7 +82,7 @@ CLF_DATA.cards.push(
 
   // ── 追加分 ──
   { n: 'Amazon ECR', c: 'コンピューティング', d: 'コンテナイメージを保存するレジストリ' },
-  { n: 'Amazon EC2 Auto Scaling', c: 'コンピューティング', d: '需要に合わせてEC2の台数を自動で増減' },
+  { n: 'Amazon EC2 Auto Scaling', c: 'コンピューティング', d: '需要に合わせて仮想サーバーの台数を自動で増減' },
   { n: 'Amazon FSx for Windows File Server', c: 'ストレージ', d: 'SMBとActive Directoryに対応したWindows向けファイルサーバー' },
   { n: 'Amazon FSx for Lustre', c: 'ストレージ', d: 'HPCや機械学習向けの高性能な並列ファイルシステム' },
   { n: 'Amazon Timestream', c: 'データベース', d: '時系列データ向けのデータベース' },
@@ -95,7 +95,7 @@ CLF_DATA.cards.push(
   { n: 'AWS Network Firewall', c: 'セキュリティ', d: 'VPC向けのマネージドなネットワークファイアウォール' },
   { n: 'AWS Audit Manager', c: 'セキュリティ', d: '監査の証拠を自動で収集し、コンプライアンス評価を支援' },
   { n: 'IAM Access Analyzer', c: 'セキュリティ', d: '外部と共有されているリソースや未使用の権限を検出' },
-  { n: 'AWS Directory Service', c: 'セキュリティ', d: 'マネージドな Microsoft Active Directory' },
+  { n: 'AWS Directory Service', c: 'セキュリティ', d: 'マネージドな Microsoft AD' },
   { n: 'AWS Service Catalog', c: '管理・監視', d: '承認済みのITサービスのカタログをセルフサービスで提供' },
   { n: 'AWS License Manager', c: '管理・監視', d: 'ソフトウェアライセンスの使用状況を管理' },
   { n: 'AWS Compute Optimizer', c: '管理・監視', d: '使用状況を分析してリソースの最適なサイズを推奨' },

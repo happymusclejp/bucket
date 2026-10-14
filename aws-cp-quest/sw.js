@@ -2,7 +2,7 @@
 // 方針: キャッシュがあればすぐに返し、裏でネットワークから取り直してキャッシュを更新する(stale-while-revalidate)。
 // そのため、デプロイした変更は「次にアプリを開いたとき」に反映される。
 // ファイル構成を変えたら PRECACHE を直し、VERSION を上げること。
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = `clf-quest-${VERSION}`;
 const PRECACHE = [
   './',

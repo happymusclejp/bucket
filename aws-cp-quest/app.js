@@ -49,10 +49,11 @@
     q: {},        // 問題ID → { n: 回答数, c: 正解数, last: 直近の正誤(1/0), w: 不正解数 }
     cards: {},    // サービス名 → 1 (覚えた)
     terms: {},    // 用語 → 1 (覚えた)
+    typing: {},   // サービス名 → { box, due, seen, miss } (思い出しタイピングの覚え具合)
     streak: { last: null, days: 0 },
     today: { date: null, n: 0 },
     badges: {},
-    best: { speed: 0, mock: 0, full: 0, combo: 0 },
+    best: { speed: 0, mock: 0, full: 0, combo: 0, tcpm: 0 },
   });
 
   function load() {
@@ -62,6 +63,7 @@
         const s = Object.assign(blank(), JSON.parse(raw));
         s.best = Object.assign(blank().best, s.best);
         s.terms = s.terms || {};
+        s.typing = s.typing || {};
         return s;
       }
     } catch (e) { /* 保存領域が使えない環境ではメモリ上だけで動かす */ }
@@ -167,6 +169,8 @@
     { id: 'speed15', mark: '15', name: '早押し名人', desc: '早押しで15問以上正解', test: () => S.best.speed >= 15 },
     { id: 'cards30', mark: '30', name: 'カードコレクター', desc: 'サービス単語帳で30枚を覚えた', test: () => knownCards() >= 30 },
     { id: 'cardsAll', mark: 'ALL', name: 'サービス図鑑', desc: 'サービス単語帳をすべて覚えた', test: () => knownCards() === CARDS.length },
+    { id: 'type10', mark: 'T③', name: '思い出し見習い', desc: '思い出しタイピングで10枚をノーヒントで打てた', test: () => CARDS.filter((c) => typeState(c).box >= 3).length >= 10 },
+    { id: 'type30', mark: '7d', name: '記憶の定着', desc: '思い出しタイピングで30枚が1週間後も打てた', test: () => CARDS.filter((c) => typeState(c).box >= 5).length >= 30 },
     { id: 'terms30', mark: 'T30', name: '用語マスター', desc: '用語カードで30枚を覚えた', test: () => knownIn('terms') >= 30 },
   ];
 
@@ -183,7 +187,7 @@
   }
 
   // ───────── 画面切り替え ─────────
-  const SCREENS = ['home', 'quiz', 'result', 'speed', 'cards'];
+  const SCREENS = ['home', 'quiz', 'result', 'speed', 'cards', 'typing'];
   function show(id) {
     stopTimers();
     for (const s of SCREENS) $('#' + s).hidden = s !== id;
@@ -206,6 +210,7 @@
     cards: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="13" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg>',
     full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
     terms: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 8h6"/></svg>',
+    typing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>',
     review: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg>',
   };
 
@@ -251,6 +256,14 @@
       </section>
 
       <section class="modes" aria-label="モード">
+        ${(() => {
+          const ts = typeStats();
+          return `<button type="button" class="mode mode-wide" data-action="typing">
+          ${ICONS.typing}<span class="mode-name">思い出しタイピング</span>
+          <span class="mode-desc">サービス名を「写す → 頭文字ヒント → ノーヒント」で打って覚える。間をあけて復習が回ってきます</span>
+          <span class="mode-stat mono">${ts.due ? `今日の復習 ${ts.due} 枚・` : ''}定着 ${ts.solid} / ${CARDS.length}・未学習 ${ts.fresh}</span>
+        </button>`;
+        })()}
         <button type="button" class="mode" data-action="mock">
           ${ICONS.mock}<span class="mode-name">ミニ模試</span>
           <span class="mode-desc">20問・28分。本番の配点どおりに出題</span>
@@ -742,6 +755,313 @@
     if (fc.i === 0) cardsStart(); else renderCard();
   }
 
+  // ───────── 思い出しタイピング ─────────
+  // サービス名を「写す → 頭文字ヒント → ノーヒント」の順に、ヒントを減らしながら思い出して打つ。
+  // 覚え具合は箱(box)で管理する(ライトナー方式)。0=写す、1=頭文字ヒント、2以上=ノーヒント。
+  // 正解すると箱が1つ進み、ノーヒントで正解するたびに次に出るまでの間隔が延びる。間違えると箱0に戻る。
+  const TYPE_DAY = 864e5;
+  const TYPE_INTERVAL_DAYS = { 2: 1, 3: 3, 4: 7, 5: 16, 6: 35 };
+  const TYPE_MAX_BOX = 6;
+  const TYPE_SESSION_CARDS = 10;
+  const TYPE_NEW_PER_SESSION = 5;
+  const TYPE_STAGE2_MISS_LIMIT = 3;
+  const STAGES = {
+    1: { label: '① 写す', hint: '表示されている名前をそのまま打つ' },
+    2: { label: '② 頭文字ヒント', hint: '頭文字をたよりに思い出して打つ' },
+    3: { label: '③ ノーヒント', hint: '説明だけを見て思い出し、Enter で答える' },
+  };
+  // 略称や正式名でも正解にする
+  const TYPE_ALIASES = {
+    'Amazon S3': ['Simple Storage Service'], 'Amazon EC2': ['Elastic Compute Cloud'], 'Amazon EBS': ['Elastic Block Store'],
+    'Amazon EFS': ['Elastic File System'], 'Amazon ECR': ['Elastic Container Registry'], 'Amazon ECS': ['Elastic Container Service'],
+    'Amazon EKS': ['Elastic Kubernetes Service'], 'Amazon VPC': ['Virtual Private Cloud'], 'Amazon RDS': ['Relational Database Service'],
+    'Amazon SQS': ['Simple Queue Service'], 'Amazon SNS': ['Simple Notification Service'], 'Amazon SES': ['Simple Email Service'],
+    'Amazon EMR': ['Elastic MapReduce'], 'Amazon MSK': ['Managed Streaming for Apache Kafka'], 'Elastic Load Balancing': ['ELB'],
+    'AWS IAM': ['Identity and Access Management'], 'AWS KMS': ['Key Management Service'], 'AWS WAF': ['Web Application Firewall'],
+    'AWS Certificate Manager': ['ACM'], 'AWS DMS': ['Database Migration Service'], 'AWS CDK': ['Cloud Development Kit'],
+    'AWS CLI': ['Command Line Interface'], 'AWS Cost and Usage Report': ['CUR'], 'AWS Resource Access Manager': ['RAM'],
+    'AWS IAM Identity Center': ['SSO', 'AWS SSO'], 'Amazon EC2 Auto Scaling': ['Auto Scaling'],
+  };
+
+  // 「Amazon」「AWS」を除いた部分を打つ(試験ではこの接頭辞はほぼ問われないため)
+  function splitName(name) {
+    const m = name.match(/^(Amazon|AWS)\s+(.+)$/);
+    return m ? { prefix: m[1], core: m[2] } : { prefix: '', core: name };
+  }
+  const normType = (s) => s.toLowerCase().replace(/^(amazon|aws)\s+/, '').replace(/[^a-z0-9]/g, '');
+  function editDistance(a, b) {
+    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+    }
+    return dp[a.length][b.length];
+  }
+  // 戻り値: 'exact' | 'close'(1文字違い) | null
+  function judgeTyped(card, input) {
+    const got = normType(input);
+    if (!got) return null;
+    const answers = [card.n, ...(TYPE_ALIASES[card.n] || [])].map(normType);
+    if (answers.includes(got)) return 'exact';
+    const core = normType(card.n);
+    if (core.length >= 6 && editDistance(core, got) <= 1) return 'close';
+    return null;
+  }
+
+  const typeState = (card) => S.typing[card.n] || { box: 0, due: 0, seen: 0, miss: 0 };
+  const stageOf = (box) => (box <= 0 ? 1 : box === 1 ? 2 : 3);
+  const typeStats = () => {
+    const now = Date.now();
+    let due = 0, solid = 0, started = 0, mastered = 0;
+    for (const c of CARDS) {
+      const st = S.typing[c.n];
+      if (!st) continue;
+      started++;
+      if (st.box >= 2 && st.due <= now) due++;
+      if (st.box >= 3) solid++;
+      if (st.box >= TYPE_MAX_BOX) mastered++;
+    }
+    return { due, solid, started, mastered, fresh: CARDS.length - started };
+  };
+
+  let tp = null;
+
+  function typingStart() {
+    show('typing');
+    const now = Date.now();
+    const seen = CARDS.filter((c) => S.typing[c.n]);
+    // 復習期限が来たカード(古い順) → 学習途中のカード → 新しいカード の順に詰める
+    const due = seen.filter((c) => S.typing[c.n].box >= 2 && S.typing[c.n].due <= now)
+      .sort((a, b) => S.typing[a.n].due - S.typing[b.n].due);
+    const learning = shuffle(seen.filter((c) => S.typing[c.n].box < 2));
+    const fresh = shuffle(CARDS.filter((c) => !S.typing[c.n]));
+    let picks = [...due, ...learning].slice(0, TYPE_SESSION_CARDS);
+    const room = Math.min(TYPE_NEW_PER_SESSION, TYPE_SESSION_CARDS - picks.length);
+    if (room > 0) picks = picks.concat(fresh.slice(0, room));
+    if (!picks.length) picks = shuffle(seen).slice(0, TYPE_SESSION_CARDS); // 全部覚えて期限前なら自由練習
+    tp = {
+      queue: shuffle(picks).map((c) => ({ card: c, stage: stageOf(typeState(c).box) })),
+      done: 0, total: 0, combo: 0, maxCombo: 0, xp: 0, ok: 0, ng: 0,
+      chars: 0, ms: 0, ups: [], misses: [], cur: null,
+    };
+    tp.total = tp.queue.length;
+    $('#tp-end').hidden = true;
+    $('#tp-stage').hidden = false;
+    typingNext();
+  }
+
+  function typingNext() {
+    if (!tp.queue.length) { typingEnd(); return; }
+    const item = tp.queue.shift();
+    tp.cur = { ...item, input: '', miss: 0, started: 0, settled: false };
+    const { prefix } = splitName(item.card.n);
+    const st = STAGES[item.stage];
+    $('#tp-stage-label').textContent = st.label;
+    $('#tp-stage-label').dataset.stage = item.stage;
+    $('#tp-cat').textContent = item.card.c;
+    $('#tp-desc').textContent = item.card.d;
+    $('#tp-prefix').textContent = item.stage === 3 ? '' : prefix;
+    $('#tp-hint').textContent = st.hint;
+    $('#tp-feedback').hidden = true;
+    $('#tp-feedback').className = 'tp-feedback';
+    $('#tp-next').hidden = true;
+    $('#tp-giveup').hidden = false;
+    const input = $('#tp-input');
+    input.value = '';
+    input.disabled = false;
+    input.placeholder = item.stage === 3 ? 'サービス名を入力して Enter' : 'ここに入力';
+    typingRenderTarget();
+    typingRenderBar();
+    input.focus({ preventScroll: true });
+  }
+
+  function typingRenderBar() {
+    const left = tp.queue.length + (tp.cur && !tp.cur.settled ? 1 : 0);
+    $('#tp-count').textContent = `のこり ${left}`;
+    const all = tp.done + left;
+    $('#tp-bar').style.width = `${all ? (tp.done / all) * 100 : 0}%`;
+    const combo = $('#tp-combo');
+    combo.hidden = tp.combo < 2;
+    combo.textContent = `${tp.combo} コンボ`;
+  }
+
+  // 打つ文字列(接頭辞を除いた名前)を、入力に合わせて色分けして表示する
+  function typingRenderTarget() {
+    const { core } = splitName(tp.cur.card.n);
+    const input = tp.cur.input;
+    const stage = tp.cur.stage;
+    const box = $('#tp-target');
+    if (stage === 3 && !tp.cur.settled) {
+      box.innerHTML = '<span class="tp-q">？</span>';
+      return;
+    }
+    let html = '';
+    for (let i = 0; i < core.length; i++) {
+      const ch = core[i];
+      const typed = input[i];
+      const isHead = i === 0 || core[i - 1] === ' ' || core[i - 1] === '-';
+      if (tp.cur.settled) {
+        html += `<span class="tc ok">${esc(ch)}</span>`;
+      } else if (typed !== undefined) {
+        const good = typed.toLowerCase() === ch.toLowerCase();
+        html += `<span class="tc ${good ? 'ok' : 'ng'}">${esc(good ? ch : (typed === ' ' ? '␣' : typed))}</span>`;
+      } else if (stage === 1 || ch === ' ' || (stage === 2 && isHead)) {
+        html += `<span class="tc ${i === input.length ? 'cur' : 'todo'}${stage === 2 ? ' head' : ''}">${ch === ' ' ? '&nbsp;' : esc(ch)}</span>`;
+      } else {
+        html += `<span class="tc ${i === input.length ? 'cur' : 'todo'} blank">_</span>`;
+      }
+    }
+    if (!tp.cur.settled && input.length > core.length) {
+      html += `<span class="tc ng">${esc(input.slice(core.length))}</span>`;
+    }
+    box.innerHTML = html;
+  }
+
+  function typingInput(value) {
+    const cur = tp && tp.cur;
+    if (!cur || cur.settled) return;
+    if (!cur.started && value) cur.started = performance.now();
+    const prev = cur.input;
+    cur.input = value;
+    if (cur.stage !== 3) {
+      const { core } = splitName(cur.card.n);
+      // 新しく打った文字がまちがっていたらミスを数える
+      if (value.length > prev.length) {
+        const i = value.length - 1;
+        if (value.slice(0, i) === prev.slice(0, i) && (i >= core.length || value[i].toLowerCase() !== core[i].toLowerCase())) {
+          cur.miss++;
+          const t = $('#tp-target');
+          t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
+        }
+      }
+      typingRenderTarget();
+      if (normType(value) === normType(core) && value.trim().length >= core.replace(/\s/g, '').length) {
+        typingSettle(true, 'exact');
+      } else if (cur.stage === 2 && cur.miss >= TYPE_STAGE2_MISS_LIMIT) {
+        typingSettle(false);
+      }
+    }
+  }
+
+  function typingEnter() {
+    const cur = tp && tp.cur;
+    if (!cur) return;
+    if (cur.settled) { if (!$('#tp-next').hidden) typingNext(); return; }
+    if (cur.stage !== 3) return; // ①②は打ち終わると自動で判定する
+    const result = judgeTyped(cur.card, cur.input);
+    typingSettle(!!result, result);
+  }
+
+  function typingSettle(ok, how) {
+    const cur = tp.cur;
+    cur.settled = true;
+    const card = cur.card;
+    const st = { ...typeState(card) };
+    const before = st.box;
+    st.seen++;
+    touchDay();
+    S.today.n++;
+    if (cur.started) {
+      tp.ms += performance.now() - cur.started;
+      tp.chars += splitName(card.n).core.length;
+    }
+
+    let gain = 0;
+    if (ok) {
+      tp.ok++;
+      tp.combo++;
+      tp.maxCombo = Math.max(tp.maxCombo, tp.combo);
+      gain = cur.stage * 2 + Math.min(tp.combo - 1, 5);
+      st.box = Math.min(before + 1, TYPE_MAX_BOX);
+      // ①②を通ったカードは、同じセッションの少し後でもう一段階上を出す(ヒントを減らして定着させる)
+      if (st.box < 2) {
+        st.due = 0;
+        tp.queue.splice(Math.min(2, tp.queue.length), 0, { card, stage: stageOf(st.box) });
+      } else {
+        st.due = Date.now() + (TYPE_INTERVAL_DAYS[st.box] || 35) * TYPE_DAY;
+      }
+      if (cur.stage === 3 || st.box === 2) tp.ups.push({ card, box: st.box });
+    } else {
+      tp.ng++;
+      tp.combo = 0;
+      st.miss++;
+      st.box = 0;
+      st.due = 0;
+      tp.misses.push(card);
+      // まちがえたカードは「写す」からやり直す
+      tp.queue.splice(Math.min(3, tp.queue.length), 0, { card, stage: 1 });
+    }
+    S.typing[card.n] = st;
+    tp.done++;
+    tp.xp += gain;
+    if (gain) addXP(gain);
+    save();
+    checkBadges();
+
+    const input = $('#tp-input');
+    $('#tp-prefix').textContent = splitName(card.n).prefix;
+    typingRenderTarget();
+    $('#tp-giveup').hidden = true;
+    const fb = $('#tp-feedback');
+    fb.hidden = false;
+    if (ok) {
+      const nextTxt = st.box >= 2 ? `次は ${TYPE_INTERVAL_DAYS[st.box] || 35}日後` : `このあと ${STAGES[stageOf(st.box)].label}`;
+      fb.className = 'tp-feedback ok';
+      fb.innerHTML = `<b>${how === 'close' ? 'おしい、ほぼ正解！ つづりを確認' : '正解'}</b><span class="mono">+${gain} XP・${nextTxt}</span>`;
+      $('#tp-target').classList.add('pop');
+      setTimeout(() => $('#tp-target').classList.remove('pop'), 400);
+      if (how === 'close') {
+        $('#tp-next').hidden = false;
+      } else {
+        input.disabled = false;
+        setTimeout(() => { if (tp && tp.cur === cur) typingNext(); }, 650);
+      }
+    } else {
+      fb.className = 'tp-feedback ng';
+      fb.innerHTML = `<b>正解は ${esc(card.n)}</b><span>このあと ① 写す からやり直し</span>`;
+      $('#tp-next').hidden = false;
+    }
+    typingRenderBar();
+    input.focus({ preventScroll: true });
+  }
+
+  function typingEnd() {
+    const cpm = tp.ms ? Math.round(tp.chars / (tp.ms / 60000)) : 0;
+    const record = cpm > (S.best.tcpm || 0) && tp.chars >= 30;
+    if (record) S.best.tcpm = cpm;
+    save();
+    checkBadges();
+    if (tp.ng === 0 && tp.ok >= 5) confetti();
+    const stats = typeStats();
+    const uniqMiss = [...new Set(tp.misses)];
+    const ups = tp.ups.filter((u) => u.box >= 2);
+    $('#tp-stage').hidden = true;
+    const end = $('#tp-end');
+    end.hidden = false;
+    end.innerHTML = `
+      <p class="eyebrow">Recall typing</p>
+      <div class="score"><span class="score-num">${tp.ok}</span><span class="score-of">/ ${tp.ok + tp.ng} 回正解</span></div>
+      <p class="result-sub mono">+${tp.xp} XP・最大 ${tp.maxCombo} コンボ・${cpm} 字/分${record ? '(自己ベスト！)' : ''}</p>
+      <div class="breakdown">
+        <div class="bd-row"><span class="dcode" style="--dc: var(--d3)">③</span><span>ノーヒントで打てる</span><span class="mono">${CARDS.filter((c) => typeState(c).box >= 2).length}/${CARDS.length}</span></div>
+        <div class="bd-row"><span class="dcode" style="--dc: var(--d1)">定着</span><span>3日以上あけても覚えていた</span><span class="mono">${stats.solid}/${CARDS.length}</span></div>
+      </div>
+      ${ups.length ? `<div class="review"><h3>ステップアップしたカード</h3><div class="miss-list">${ups.map((u) => `<p><b>${esc(u.card.n)}</b>次は${TYPE_INTERVAL_DAYS[u.box] || 35}日後</p>`).join('')}</div></div>` : ''}
+      ${uniqMiss.length ? `<div class="review"><h3>まちがえたカード</h3><div class="miss-list">${uniqMiss.map((c) => `<p><b>${esc(c.n)}</b>${esc(c.d)}</p>`).join('')}</div></div>` : ''}
+      <div class="actions">
+        <button type="button" class="btn primary" data-action="typing">つづける</button>
+        <button type="button" class="btn" data-action="home">ホームへ</button>
+      </div>`;
+    tp.cur = null;
+  }
+
+  $('#tp-input').addEventListener('input', (e) => typingInput(e.target.value));
+  $('#tp-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); typingEnter(); }
+  });
+
   // ───────── 演出 ─────────
   function toast(msg, kind = '') {
     const t = document.createElement('div');
@@ -790,6 +1110,7 @@
   }
 
   function stopTimers() {
+    if (tp && $('#typing').hidden === false) tp = null;
     if (run && run.timer) { clearInterval(run.timer); run.timer = null; }
     if (sp && sp.timer) { clearInterval(sp.timer); sp = null; }
   }
@@ -809,6 +1130,9 @@
       case 'submit': submit(); break;
       case 'quit': quitQuiz(); break;
       case 'speed': speedIntro(); break;
+      case 'typing': typingStart(); break;
+      case 'tp-next': typingNext(); break;
+      case 'tp-giveup': if (tp && tp.cur && !tp.cur.settled) typingSettle(false); break;
       case 'sp-start': speedStart(); break;
       case 'sp-pick': speedPick(Number(el.dataset.k)); break;
       case 'cards': cardsStart(el.dataset.deck); break;
